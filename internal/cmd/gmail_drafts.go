@@ -146,7 +146,7 @@ func (c *GmailDraftsGetCmd) Run(ctx context.Context, flags *RootFlags) error {
 		if c.Download {
 			var downloads []attachmentDownloadOutput
 			if attachDir != "" {
-				downloads, err = downloadAttachmentOutputs(ctx, svc, msg.Id, attachments, attachDir, c.UseIndexedAttachmentIDs)
+				downloads, err = downloadAttachmentOutputs(ctx, svc, msg.Id, attachments, attachDir, c.UseIndexedAttachmentIDs, false, 0, nil)
 				if err != nil {
 					return err
 				}
@@ -179,7 +179,7 @@ func (c *GmailDraftsGetCmd) Run(ctx context.Context, flags *RootFlags) error {
 	printAttachmentSection(u.Out(), attachments, c.UseIndexedAttachmentIDs)
 
 	if attachDir != "" {
-		downloads, err := downloadAttachmentOutputs(ctx, svc, msg.Id, attachments, attachDir, c.UseIndexedAttachmentIDs)
+		downloads, err := downloadAttachmentOutputs(ctx, svc, msg.Id, attachments, attachDir, c.UseIndexedAttachmentIDs, false, 0, nil)
 		if err != nil {
 			return err
 		}

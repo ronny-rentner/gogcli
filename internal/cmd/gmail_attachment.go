@@ -25,7 +25,7 @@ type GmailAttachmentCmd struct {
 	Output                  OutputPathFlag `embed:""`
 	Name                    string         `name:"name" help:"Filename (used when --out is empty or points to a directory)"`
 	Inline                  bool           `name:"inline" help:"Also return the attachment content base64-encoded (contentBase64) in the response; attachments over the inline size limit fall back to the file path with an explanatory reason"`
-	InlineMaxBytes          int            `name:"inline-max-bytes" default:"3145728" help:"Maximum attachment size --inline embeds (bytes)" env:"GOG_GMAIL_INLINE_MAX_BYTES"`
+	InlineMaxBytes          int            `name:"inline-max-bytes" default:"3145728" help:"Maximum total attachment bytes --inline embeds in one response" env:"GOG_GMAIL_INLINE_MAX_BYTES"`
 }
 
 const defaultGmailAttachmentFilename = "attachment.bin"

@@ -75,7 +75,7 @@ func (c *GmailThreadGetCmd) Run(ctx context.Context, flags *RootFlags) error {
 				if msg == nil || msg.Id == "" {
 					continue
 				}
-				downloads, err := downloadAttachmentOutputs(ctx, svc, msg.Id, collectAttachments(msg.Payload), attachDir, c.UseIndexedAttachmentIDs)
+				downloads, err := downloadAttachmentOutputs(ctx, svc, msg.Id, collectAttachments(msg.Payload), attachDir, c.UseIndexedAttachmentIDs, false, 0, nil)
 				if err != nil {
 					return err
 				}
@@ -155,7 +155,7 @@ func (c *GmailThreadGetCmd) Run(ctx context.Context, flags *RootFlags) error {
 		printAttachmentSection(u.Out(), attachments, c.UseIndexedAttachmentIDs)
 
 		if c.Download && len(attachments) > 0 {
-			downloads, err := downloadAttachmentOutputs(ctx, svc, msg.Id, attachments, attachDir, c.UseIndexedAttachmentIDs)
+			downloads, err := downloadAttachmentOutputs(ctx, svc, msg.Id, attachments, attachDir, c.UseIndexedAttachmentIDs, false, 0, nil)
 			if err != nil {
 				return err
 			}
@@ -242,6 +242,8 @@ type GmailThreadAttachmentsCmd struct {
 	ThreadID                string        `arg:"" name:"threadId" help:"Thread ID"`
 	UseIndexedAttachmentIDs bool          `name:"use-indexed-attachment-ids" help:"Use 0-based indexes as attachment ids everywhere (output, the download argument, and saved filenames)" env:"GOG_GMAIL_USE_INDEXED_ATTACHMENT_IDS"`
 	Download                bool          `name:"download" help:"Download all attachments"`
+	Inline                  bool          `name:"inline" help:"Also return each attachment's content base64-encoded (contentBase64) in the response; attachments over the inline size limit fall back to the file path with an explanatory reason; requires --download"`
+	InlineMaxBytes          int           `name:"inline-max-bytes" default:"3145728" help:"Maximum total attachment bytes --inline embeds in one response" env:"GOG_GMAIL_INLINE_MAX_BYTES"`
 	OutputDir               OutputDirFlag `embed:""`
 }
 
@@ -255,6 +257,9 @@ func (c *GmailThreadAttachmentsCmd) Run(ctx context.Context, flags *RootFlags) e
 	threadID = normalizeGmailThreadID(threadID)
 	if threadID == "" {
 		return usage("empty threadId")
+	}
+	if c.Inline && !c.Download {
+		return usage("--inline requires --download")
 	}
 
 	svc, err := gmailService(ctx, account)
@@ -292,13 +297,16 @@ func (c *GmailThreadAttachmentsCmd) Run(ctx context.Context, flags *RootFlags) e
 	}
 
 	allAttachments := make([]attachmentDownloadOutput, 0)
+	// One allowance for the whole response, drawn down as each message's attachments
+	// are embedded.
+	inlineRemaining := c.InlineMaxBytes
 	for _, msg := range thread.Messages {
 		if msg == nil {
 			continue
 		}
 		attachments := collectAttachments(msg.Payload)
 		if c.Download {
-			downloads, err := downloadAttachmentOutputs(ctx, svc, msg.Id, attachments, attachDir, c.UseIndexedAttachmentIDs)
+			downloads, err := downloadAttachmentOutputs(ctx, svc, msg.Id, attachments, attachDir, c.UseIndexedAttachmentIDs, c.Inline, c.InlineMaxBytes, &inlineRemaining)
 			if err != nil {
 				return err
 			}
@@ -364,9 +372,9 @@ func (c *GmailURLCmd) Run(ctx context.Context, flags *RootFlags) error {
 	return nil
 }
 
-func downloadAttachment(ctx context.Context, svc *gmail.Service, messageID string, a attachmentInfo, dir string, useIndexedAttachmentIDs bool) (string, bool, error) {
+func downloadAttachment(ctx context.Context, svc *gmail.Service, messageID string, a attachmentInfo, dir string, useIndexedAttachmentIDs bool, inline bool) (string, bool, []byte, error) {
 	if strings.TrimSpace(messageID) == "" || strings.TrimSpace(a.AttachmentID) == "" {
-		return "", false, errors.New("missing messageID/attachmentID")
+		return "", false, nil, errors.New("missing messageID/attachmentID")
 	}
 	if strings.TrimSpace(dir) == "" {
 		dir = "."
@@ -387,9 +395,18 @@ func downloadAttachment(ctx context.Context, svc *gmail.Service, messageID strin
 	}
 	filename := fmt.Sprintf("%s_%s_%s", messageID, ref, safeFilename)
 	outPath := filepath.Join(dir, filename)
+	if inline {
+		// Same choice GmailAttachmentCmd.Run makes for --inline: always fetch, so the
+		// returned bytes cannot come from a same-size file already sitting at outPath.
+		path, _, data, err := downloadAttachmentFreshToPath(ctx, svc, messageID, a.AttachmentID, outPath)
+		if err != nil {
+			return "", false, nil, err
+		}
+		return path, false, data, nil
+	}
 	path, cached, _, err := downloadAttachmentToPath(ctx, svc, messageID, a.AttachmentID, outPath, a.Size)
 	if err != nil {
-		return "", false, err
+		return "", false, nil, err
 	}
-	return path, cached, nil
+	return path, cached, nil, nil
 }
