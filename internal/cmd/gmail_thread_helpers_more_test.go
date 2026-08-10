@@ -68,7 +68,7 @@ func TestCollectAttachmentsNil(t *testing.T) {
 }
 
 func TestDownloadAttachment_ErrorsAndSafeFilename(t *testing.T) {
-	if _, _, err := downloadAttachment(context.Background(), nil, "", attachmentInfo{AttachmentID: "a"}, ".", false); err == nil {
+	if _, _, _, err := downloadAttachment(context.Background(), nil, "", attachmentInfo{AttachmentID: "a"}, ".", false, false); err == nil {
 		t.Fatalf("expected missing messageID error")
 	}
 
@@ -83,7 +83,7 @@ func TestDownloadAttachment_ErrorsAndSafeFilename(t *testing.T) {
 	if err := os.WriteFile(expectedPath, []byte("data"), 0o600); err != nil {
 		t.Fatalf("WriteFile: %v", err)
 	}
-	path, cached, err := downloadAttachment(context.Background(), nil, "m1", att, dir, false)
+	path, cached, _, err := downloadAttachment(context.Background(), nil, "m1", att, dir, false, false)
 	if err != nil {
 		t.Fatalf("downloadAttachment: %v", err)
 	}
@@ -105,7 +105,7 @@ func TestDownloadAttachment_IndexedFilenameUsesIndex(t *testing.T) {
 	if err := os.WriteFile(expectedPath, []byte("data"), 0o600); err != nil {
 		t.Fatalf("WriteFile: %v", err)
 	}
-	path, cached, err := downloadAttachment(context.Background(), nil, "m1", att, dir, true)
+	path, cached, _, err := downloadAttachment(context.Background(), nil, "m1", att, dir, true, false)
 	if err != nil {
 		t.Fatalf("downloadAttachment: %v", err)
 	}
@@ -134,7 +134,7 @@ func TestDownloadAttachment_ServiceError(t *testing.T) {
 		Size:         1,
 		AttachmentID: "att1",
 	}
-	if _, _, err := downloadAttachment(context.Background(), svc, "m1", att, t.TempDir(), false); err == nil {
+	if _, _, _, err := downloadAttachment(context.Background(), svc, "m1", att, t.TempDir(), false, false); err == nil {
 		t.Fatalf("expected error")
 	}
 }
