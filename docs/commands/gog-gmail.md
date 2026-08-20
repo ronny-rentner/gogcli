@@ -26,6 +26,7 @@ gog gmail (mail,email) <command> [flags]
 - [gog gmail history](gog-gmail-history.md) - Gmail history
 - [gog gmail import](gog-gmail-import.md) - Import an RFC822/EML message into Gmail
 - [gog gmail labels](gog-gmail-labels.md) - Label operations
+- [gog gmail link](gog-gmail-link.md) - Resolve a [link:N] marker from sanitized output to its full URL
 - [gog gmail mark-read](gog-gmail-mark-read.md) - Mark messages as read
 - [gog gmail messages](gog-gmail-messages.md) - Message operations
 - [gog gmail raw](gog-gmail-raw.md) - Dump raw Gmail API response as JSON (Users.Messages.Get; lossless; for scripting and LLM consumption)
