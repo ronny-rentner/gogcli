@@ -20,8 +20,11 @@ var (
 	// character — the reader can drop a trailing ")" or "." it reads as punctuation,
 	// but nothing downstream can restore a character the pattern cut off.
 	sanitizeLinkPattern = regexp.MustCompile("\x00[^\x00]*\x00|" + `https?://[^\s<>"'` + "`" + `\]]+`)
-	sanitizeWhitespace  = regexp.MustCompile(`\s+`)
-	sanitizeBlockTags   = map[string]bool{
+	// A [link:N] a sender wrote into the body, defused before the pass below inserts
+	// generated markers so mail text cannot pose as a reference this conversion made.
+	sanitizeLinkMarkerPattern = regexp.MustCompile(`(?i)\[\s*link\s*:\s*\d+\s*\]`)
+	sanitizeWhitespace        = regexp.MustCompile(`\s+`)
+	sanitizeBlockTags         = map[string]bool{
 		"article": true, "blockquote": true, "br": true, "dd": true, "div": true,
 		"dl": true, "dt": true, "footer": true, "h1": true, "h2": true,
 		"h3": true, "h4": true, "h5": true, "h6": true, "header": true,
@@ -129,6 +132,8 @@ func sanitizeGmailBodyLinks(body string, isHTML bool) (string, []gmailLink) {
 		text = extractSanitizedHTMLText(text, anchorTexts)
 	}
 	text = htmlpkg.UnescapeString(text)
+	// Defuse literal [link:N] text the sender wrote before the pass below inserts its own.
+	text = sanitizeLinkMarkerPattern.ReplaceAllString(text, "[[MARKER_SANITIZED]]")
 	// One left-to-right pass numbers anchor placeholders and bare URLs alike, so
 	// indexes follow document order. A bare URL has no anchor text; its marker
 	// replaces it.

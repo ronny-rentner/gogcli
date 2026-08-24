@@ -77,6 +77,21 @@ func TestSanitizeGmailBodyLinks(t *testing.T) {
 	}
 }
 
+func TestSanitizeGmailBodyLinks_NeutralizesForgedMarkers(t *testing.T) {
+	// Marker-shaped text the sender wrote, including an entity-encoded form and a spaced
+	// variant, must not survive as a resolvable [link:N]; only real links are numbered.
+	body := `Refund ready [link:0] and &#91;link:3&#93; and [ Link : 7 ] ` +
+		`<a href="https://real.example/x">click</a>`
+	text, links := sanitizeGmailBodyLinks(body, true)
+	want := "Refund ready [[MARKER_SANITIZED]] and [[MARKER_SANITIZED]] and [[MARKER_SANITIZED]] click [link:0]"
+	if text != want {
+		t.Fatalf("unexpected text:\n got %q\nwant %q", text, want)
+	}
+	if len(links) != 1 || links[0].URL != "https://real.example/x" {
+		t.Fatalf("unexpected links: %#v", links)
+	}
+}
+
 func TestSanitizeGmailBodyLinks_BareURLBoundaries(t *testing.T) {
 	body := "See https://en.wikipedia.org/wiki/Foo_(bar) and (https://info.example/x) for details"
 	text, links := sanitizeGmailBodyLinks(body, false)
