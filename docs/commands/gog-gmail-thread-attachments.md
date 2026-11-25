@@ -31,6 +31,8 @@ gog gmail (mail,email) thread (threads,read) attachments (files) <threadId> [fla
 | `--gmail-no-send` | `bool` | false | Block Gmail send operations (agent safety) |
 | `-h`<br>`--help` | `kong.helpFlag` |  | Show context-sensitive help. |
 | `--home` | `string` |  | Override gogcli config/data/state/cache root (equivalent to GOG_HOME) |
+| `--inline` | `bool` |  | Also return each attachment's content base64-encoded (contentBase64) in the response; attachments over the inline size limit fall back to the file path with an explanatory reason; requires --download |
+| `--inline-max-bytes` | `int` | 3145728 | Maximum total attachment bytes --inline embeds in one response |
 | `-j`<br>`--json`<br>`--machine` | `bool` | false | Output JSON to stdout (best for scripting) |
 | `--no-input`<br>`--non-interactive`<br>`--noninteractive` | `bool` |  | Never prompt; fail instead (useful for CI) |
 | `--out-dir`<br>`--output-dir` | `string` |  | Directory to write attachments to (default: current directory) |

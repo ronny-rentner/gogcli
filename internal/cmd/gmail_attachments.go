@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"strconv"
 	"strings"
@@ -36,8 +37,10 @@ type attachmentOutput struct {
 type attachmentDownloadOutput struct {
 	MessageID string `json:"messageId"`
 	attachmentOutput
-	Path   string `json:"path,omitempty"`
-	Cached bool   `json:"cached,omitempty"`
+	Path          string `json:"path,omitempty"`
+	Cached        bool   `json:"cached,omitempty"`
+	ContentBase64 string `json:"contentBase64,omitempty"`
+	Reason        string `json:"reason,omitempty"`
 }
 
 type attachmentDownloadSummary struct {
@@ -177,21 +180,36 @@ func printAttachmentSection(p *ui.Printer, attachments []attachmentInfo, useInde
 	p.Println("")
 }
 
-func downloadAttachmentOutputs(ctx context.Context, svc *gmail.Service, messageID string, attachments []attachmentInfo, dir string, useIndexedAttachmentIDs bool) ([]attachmentDownloadOutput, error) {
+func downloadAttachmentOutputs(ctx context.Context, svc *gmail.Service, messageID string, attachments []attachmentInfo, dir string, useIndexedAttachmentIDs bool, inline bool, inlineMaxBytes int, inlineRemaining *int) ([]attachmentDownloadOutput, error) {
 	if len(attachments) == 0 {
 		return nil, nil
 	}
 	out := make([]attachmentDownloadOutput, 0, len(attachments))
 	for _, a := range attachments {
-		outPath, cached, err := downloadAttachment(ctx, svc, messageID, a, dir, useIndexedAttachmentIDs)
+		outPath, cached, data, err := downloadAttachment(ctx, svc, messageID, a, dir, useIndexedAttachmentIDs, inline)
 		if err != nil {
 			return nil, err
+		}
+		contentBase64, reason := "", ""
+		if inline {
+			if len(data) > *inlineRemaining {
+				ref := a.AttachmentID
+				if useIndexedAttachmentIDs {
+					ref = strconv.Itoa(a.AttachmentIndex)
+				}
+				reason = fmt.Sprintf("attachment bytes in contentBase64 omitted; including this attachment would exceed the max inline size of %d bytes; use `gog gmail attachment %s %s --inline` to fetch this attachment", inlineMaxBytes, messageID, ref)
+			} else {
+				*inlineRemaining -= len(data)
+				contentBase64 = base64.StdEncoding.EncodeToString(data)
+			}
 		}
 		out = append(out, attachmentDownloadOutput{
 			MessageID:        messageID,
 			attachmentOutput: attachmentOutputFromInfo(a, useIndexedAttachmentIDs),
 			Path:             outPath,
 			Cached:           cached,
+			ContentBase64:    contentBase64,
+			Reason:           reason,
 		})
 	}
 	return out, nil
