@@ -317,8 +317,8 @@ func TestGmailMessagesSearch_SanitizeBodyMatchesGmailGet(t *testing.T) {
 			if strings.Contains(stdout, "evil.example") || strings.Contains(stdout, "example.com/page") || strings.Contains(stdout, "track.example") {
 				t.Fatalf("url leaked: %s", stdout)
 			}
-			if !strings.Contains(got, "[url removed]") {
-				t.Fatalf("expected url placeholder in %q", got)
+			if !strings.Contains(got, "[link:0]") {
+				t.Fatalf("expected first link marker in %q", got)
 			}
 		})
 	}
